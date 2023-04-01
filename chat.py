@@ -138,6 +138,23 @@ def generate_app_name_and_directories(MASTER_PROMPT):
     os.system(bash_commands)
     return app_name
 
+def get_edit_prompt_is_frontend_or_backend(MASTER_PROMPT, EDIT_PROMPT):
+    messages = [
+        {"role": "system", "content": SYSTEM_PROMPT_BE_FE_EDIT_SELECTOR},
+        {"role": "user", "content": f"Initial Prompt: {MASTER_PROMPT}\n Edit Prompt: {EDIT_PROMPT}"},
+    ]
+    response = generate_chat_completion(messages)
+    response_text = response['choices'][0]['message']['content']
+    # get the first codeblock that is between ``` and ```
+    code_blocks = extract_code_blocks(response_text)
+    # check if first codeblock contains substring 'frontend'
+    if 'frontend' in code_blocks[0]:
+        return 'frontend'
+    elif 'backend' in code_blocks[0]:
+        return 'backend'
+    else:
+        return None
+
 # MASTER_PROMPT = """
 # Create a Text tokenizing app. Use NLTK tokenizers.
 # We will need routes to upload text, process it and show it back on the frontend.
@@ -207,7 +224,22 @@ while True:
     if EDIT_MESSAGE == "exit":
         break
     thinking_start()
-    response_text = generate_frontend_from_iteration(MASTER_PROMPT, app_name, EDIT_MESSAGE)
-    response_text_backend = generate_backend_from_frontend(MASTER_PROMPT + "\n" + EDIT_MESSAGE, app_name)
+    edit_type = get_edit_prompt_is_frontend_or_backend(MASTER_PROMPT, EDIT_MESSAGE)
+    thinking_stop()
+    if edit_type == 'frontend':
+        print_grey_message("Looks like you want a frontend edit.\n")
+        response_text = generate_frontend_from_iteration(MASTER_PROMPT, app_name, EDIT_MESSAGE)
+        response_text_backend = generate_backend_from_frontend(MASTER_PROMPT + "\n" + EDIT_MESSAGE, app_name)
+    else:
+        print_grey_message("Looks like you want a backend edit.\n")
+        response_text_backend = generate_backend_from_iteration(MASTER_PROMPT, app_name, EDIT_MESSAGE)
+    thinking_start()
+    # if EDIT_MESSAGE[:2] == "FE":
+    #     response_text = generate_frontend_from_iteration(MASTER_PROMPT, app_name, EDIT_MESSAGE)
+    # elif EDIT_MESSAGE[:2] == "BE":
+    #     response_text_backend = generate_backend_from_iteration(MASTER_PROMPT, app_name, EDIT_MESSAGE)
+    # else:
+    #     response_text = generate_frontend_from_iteration(MASTER_PROMPT, app_name, EDIT_MESSAGE)
+    #     response_text_backend = generate_backend_from_frontend(MASTER_PROMPT + "\n" + EDIT_MESSAGE, app_name)
     thinking_stop()
     print_grey_message(DONE_MESSAGE)
