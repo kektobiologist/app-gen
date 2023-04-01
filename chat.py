@@ -6,8 +6,8 @@ import time
 import sys
 from multiprocessing.pool import ThreadPool
 
-API_KEY = "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"
 API_ENDPOINT = "https://api.openai.com/v1/chat/completions"
+OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
 from prompts import SYSTEM_PROMPT_BE_FE_EDIT_SELECTOR, SYSTEM_PROMPT_FRONTEND, SYSTEM_PROMPT_BACKEND, SYSTEM_PROMPT_DIRECTORY
 
 def extract_code_blocks(text, suffix=None):
@@ -23,7 +23,7 @@ def extract_code_blocks(text, suffix=None):
 def generate_chat_completion(messages, model="gpt-4", temperature=1, max_tokens=2048):
     headers = {
         "Content-Type": "application/json",
-        "Authorization": f"Bearer {API_KEY}",
+        "Authorization": f"Bearer {OPENAI_API_KEY}",
     }
 
     data = {
