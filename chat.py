@@ -175,9 +175,22 @@ def thinking_start():
     global keep_animating
     keep_animating = True
     async_result = pool.apply_async(show_loading_animation)
+
 def thinking_stop():
     global keep_animating
     keep_animating = False
+
+def get_multiline_input():
+    lines = []
+    while True:
+        user_input = input('==> ')
+
+        # 👇️ if user pressed Enter without a value, break out of loop
+        if user_input == '':
+            break
+        else:
+            lines.append(user_input + '\n')
+    return ''.join(lines)
     
 
 # main
@@ -186,7 +199,7 @@ pool = ThreadPool(1)
 # print a greeting to terminal, in greyed text
 GREETING = "Hi, what would you like to create?"
 print_grey_message(GREETING)
-MASTER_PROMPT = input("==> ")
+MASTER_PROMPT = get_multiline_input()
 thinking_start()
 app_name = generate_app_name_and_directories(MASTER_PROMPT).strip()
 thinking_stop()
@@ -204,7 +217,7 @@ DONE_MESSAGE = "\nDone. What next?"
 print_grey_message(DONE_MESSAGE)
 # enter editing loop
 while True:
-    EDIT_MESSAGE = input("==> ")
+    EDIT_MESSAGE = get_multiline_input()
     if EDIT_MESSAGE == "exit":
         break
     thinking_start()
