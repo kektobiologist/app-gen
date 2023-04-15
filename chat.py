@@ -11,8 +11,15 @@ from utils_generation import (generate_frontend_from_scratch, generate_frontend_
     generate_backend_from_frontend, generate_backend_from_iteration)
 import fire
 from prompts import SYSTEM_PROMPT_BE_FE_EDIT_SELECTOR, SYSTEM_PROMPT_DIRECTORY
-from constants import VERBOSE
+from constants import VERBOSE, BASE_DIRECTORY
 from generate_directory import generate_app_name_and_directories
+import logging
+
+logging.basicConfig(
+    filename='deployment.log',
+    format='%(asctime)s %(levelname)-8s %(filename)s:%(lineno)s - %(funcName)20s() : %(message)s',
+    level=logging.INFO,
+    datefmt='%Y-%m-%d %H:%M:%S')
 
 def get_edit_prompt_is_frontend_or_backend(MASTER_PROMPT, EDIT_PROMPT):
     messages = [
@@ -95,6 +102,7 @@ if len(sys.argv) == 1: # Running normally
     history["MASTER_PROMPT"] = MASTER_PROMPT
     history["APP_NAME"] = app_name
     json.dump(history, open('last_run.json', 'w'))
+    json.dump(history, open(f'{BASE_DIRECTORY}/{app_name}/last_run.json', 'w'))
     thinking_stop()
 
 else: # resuming from checkpoint

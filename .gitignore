@@ -1,2 +1,5 @@
+deployment.log
+last_run.json
+generated_apps/*
 __pycache__/*
 .buildt

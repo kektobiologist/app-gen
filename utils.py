@@ -3,6 +3,7 @@ from constants import *
 import time
 import requests
 import json
+import logging
 
 def extract_code_blocks(text, suffix=None):
     # if no suffix, then we can do any pattern matching. otherwise, we need to match the suffix
@@ -69,12 +70,23 @@ def generate_chat_completion(messages, model="gpt-4", temperature=0, max_tokens=
     if max_tokens is not None:
         data["max_tokens"] = max_tokens
 
-    response = requests.post(API_ENDPOINT, headers=headers, data=json.dumps(data))
+    try:
+        logging.info(f"Sending request to {API_ENDPOINT} with data {data}")
+        response = requests.post(API_ENDPOINT, headers=headers, data=json.dumps(data))
+
+    except Exception as e:
+        print (e)
+        logging.info(f"Error: {e}")
+        print ("Retrying in 10 seconds...")
+        time.sleep(10)
+        return generate_chat_completion(messages, model, temperature, max_tokens) # hack TODO: fix this
 
     if response.status_code == 200:
+        logging.info(f"Response: {response.json()}")
         return response.json()
     else:
         print (Exception(f"Error {response.status_code}: {response.text}"))
+        logging.info(f"Error {response.status_code}: {response.text}")
         print ("Retrying in 10 seconds...")
         time.sleep(10)
         return generate_chat_completion(messages, model, temperature, max_tokens) # hack TODO: fix this
