@@ -74,7 +74,22 @@ def get_multiline_input():
         else:
             lines.append(user_input + '\n')
     return ''.join(lines)
-    
+
+def generate_both_from_scratch(MASTER_PROMPT, app_name):
+    # generate frontend
+    response_text = generate_frontend_from_scratch(MASTER_PROMPT, app_name)
+    # generate backend
+    response_text_backend = generate_backend_from_frontend(MASTER_PROMPT, app_name)
+    return response_text, response_text_backend
+
+def generate_both_from_iteration(MASTER_PROMPT, app_name, to_send_edit_message):
+    response_text = generate_frontend_from_iteration(MASTER_PROMPT, app_name, to_send_edit_message)
+    response_text_backend = generate_backend_from_frontend(MASTER_PROMPT + "\n" + to_send_edit_message, app_name)
+
+def save_history(history):
+    json.dump(history, open('last_run.json', 'w'))
+    json.dump(history, open(f'{BASE_DIRECTORY}/{history["APP_NAME"]}/last_run.json', 'w'))
+
 
 pool = ThreadPool(1)
 
@@ -93,16 +108,15 @@ if len(sys.argv) == 1: # Running normally
     thinking_stop()
     print_grey_message(f"Cool I'll generate the {app_name} app for you.")
     thinking_start()
-    # generate frontend
-    response_text = generate_frontend_from_scratch(MASTER_PROMPT, app_name)
-    # generate backend
-    response_text_backend = generate_backend_from_frontend(MASTER_PROMPT, app_name)
+    
+    response_text, response_text_backend = generate_both_from_scratch(MASTER_PROMPT, app_name)
     # sleep 2 seconds
     # time.sleep(2)
+    history["EDIT_MESSAGE"] = []
     history["MASTER_PROMPT"] = MASTER_PROMPT
     history["APP_NAME"] = app_name
-    json.dump(history, open('last_run.json', 'w'))
-    json.dump(history, open(f'{BASE_DIRECTORY}/{app_name}/last_run.json', 'w'))
+    save_history(history)
+    logging.info(f"New prompt: {history}")
     thinking_stop()
 
 else: # resuming from checkpoint
@@ -110,6 +124,9 @@ else: # resuming from checkpoint
         history = json.load(open('last_run.json', 'r'))
         MASTER_PROMPT = history["MASTER_PROMPT"]
         app_name = history["APP_NAME"]
+        logging.info(f"Loaded prompt: {history}")
+    else:
+        raise ValueError('First argument can only be "resume"')
 
 
 DONE_MESSAGE = "\nDone. What next?"
@@ -120,22 +137,50 @@ all_edit_message = []
 # enter editing loop
 while True:
     EDIT_MESSAGE = get_multiline_input()
+    logging.info("Edit message: " + EDIT_MESSAGE)
     if EDIT_MESSAGE == "exit":
         break
     elif EDIT_MESSAGE.strip() == "":
         continue
+    elif EDIT_MESSAGE == "show":
+        print (to_send_edit_message)
+        continue
+    elif EDIT_MESSAGE == "clear":
+        print ("Clearing edit history")
+        history["EDIT_MESSAGE"] = []
+        to_send_edit_message = ""
+        continue
+    elif EDIT_MESSAGE == "pop":
+        print ("Clearing last history")
+        history["EDIT_MESSAGE"] = history["EDIT_MESSAGE"][:-1]
+        to_send_edit_message = "\n".join(history["EDIT_MESSAGE"])
+        continue
+    
     thinking_start()
-    edit_type = get_edit_prompt_is_frontend_or_backend(MASTER_PROMPT, EDIT_MESSAGE)
+    
+    # edit_type = get_edit_prompt_is_frontend_or_backend(MASTER_PROMPT, EDIT_MESSAGE)
+    edit_type = EDIT_MESSAGE.split(" ")[0]
+    if not (edit_type in ['frontend', 'backend', 'both', 'error']):
+        print_grey_message("Looks like you have not mentioned the type of change. Please re-enter your request\n")
+        continue
+    EDIT_MESSAGE = " ".join(EDIT_MESSAGE.split(" ")[1:])
     thinking_stop()
-    all_edit_message.append(EDIT_MESSAGE)
-    to_send_edit_message = "\n".join(all_edit_message)
-    if edit_type == 'frontend':
+    history["EDIT_MESSAGE"].append(EDIT_MESSAGE)
+    to_send_edit_message = "\n".join(history["EDIT_MESSAGE"])
+    
+    # We need to decide whether we want to add the edit message to the MASTER_PROMPT
+
+    save_history(history)
+    
+    if edit_type in ['both']:
+        print_grey_message("Looks like you want to edit the whole app.\n")
+        thinking_start()
+        generate_both_from_iteration(MASTER_PROMPT, app_name, to_send_edit_message)
+    elif edit_type in ['frontend']:
         print_grey_message("Looks like you want a frontend edit.\n")
         thinking_start()
-        response_text = generate_frontend_from_iteration(MASTER_PROMPT, app_name, to_send_edit_message)
-        response_text_backend = generate_backend_from_frontend(MASTER_PROMPT + "\n" + to_send_edit_message, app_name)
-    else:
-
+        generate_frontend_from_iteration(MASTER_PROMPT, app_name, to_send_edit_message)
+    elif edit_type in ['backend', 'error']:
         print_grey_message("Looks like you want a backend edit.\n")
         thinking_start()
         response_text_backend = generate_backend_from_iteration(MASTER_PROMPT, app_name, to_send_edit_message)
